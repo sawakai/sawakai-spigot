@@ -1,0 +1,2 @@
+rootProject.name = "sawakai-spigot"
+
