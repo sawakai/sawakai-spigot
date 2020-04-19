@@ -1,6 +1,6 @@
-name: ${project.name}
+name: sawakai-spigot
 main: jp.sawa_kai.sawakai.spigot.Main
-version: ${project.version}
-description: ${project.description}
+version: 1.0
+description: https://github.com/sawakai
 author: winjii, mucho613, and gedorinku
 api-version: 1.15
