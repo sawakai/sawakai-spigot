@@ -72,7 +72,7 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
         }
     }
 
-    private val okHttpClient by lazy {
+    private val okHttpClient = {
         val cookieManager = CookieManager()
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
         CookieHandler.setDefault(cookieManager)
@@ -127,7 +127,7 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
             }
             .addNetworkInterceptor(loggingInterceptor)
             .build()
-    }
+    }()
 
     private val signalingServerDomain by lazy {
         val req = Request.Builder()
