@@ -22,6 +22,7 @@ dependencies {
 
     implementation("io.socket:socket.io-client:1.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.5.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.5.0")
     implementation("com.squareup.moshi:moshi:1.9.2")
     implementation("com.squareup.moshi:moshi-kotlin:1.9.2")
     implementation("org.json:json:20190722")

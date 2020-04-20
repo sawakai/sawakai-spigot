@@ -5,19 +5,19 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
-import io.socket.engineio.client.Transport
 import jp.sawa_kai.sawakai.spigot.skyway.types.GetSignalingResponse
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.addHeaderLenient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.bukkit.Bukkit
 import java.io.IOException
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.security.SecureRandom
-import javax.xml.bind.JAXBElement
-import kotlin.math.sign
 
 
 class SkyWayClient(private val apiKey: String, private val roomId: String) {
@@ -35,6 +35,8 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
         val socket = IO.socket(signalingServerUrl, IO.Options().apply {
             query = "apiKey=${apiKey}&token=${token}&platform=javascript&sdk_version=2.0.5"
             timestampRequests = true
+            secure = true
+            forceNew = true
         })
         socket.on(Socket.EVENT_CONNECT, Emitter.Listener {
             socket.emit("ROOM_JOIN", "{\"roomName\":\"${roomId}\",\"roomType\":\"sfu\"}")
@@ -71,23 +73,37 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
     }
 
     private val okHttpClient by lazy {
+        val cookieManager = CookieManager()
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+        CookieHandler.setDefault(cookieManager)
+        val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+            override fun log(message: String) {
+                Bukkit.getLogger().info("okhttp: $message")
+            }
+        }).apply {
+            setLevel(HttpLoggingInterceptor.Level.BODY)
+        }
+
         OkHttpClient.Builder()
+            .cookieJar(CookieJar())
             .addInterceptor {
                 val newRequest = it.request().newBuilder()
-                    .addHeader("Origin", "https://minecraft-voice-chat-test.web.app")
-                    .addHeader("Referer", "https://minecraft-voice-chat-test.web.app/room/")
                     .addHeader(
-                        "User-Agent",
-                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36"
-                    )
-                    .addHeader(
-                        "Host",
-                        signalingServerDomain
+                        "Accept-Encoding",
+                        "gzip, deflate, br"
                     )
                     .addHeader(
                         "Accept-Language",
                         "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6,zh;q=0.5,pt;q=0.4"
                     )
+                    .addHeader(
+                        "Cache-Control",
+                        "no-cache"
+                    )
+                    .addHeader("DNT", "1")
+                    .addHeader("Origin", "https://minecraft-voice-chat-test.web.app")
+                    .addHeader("Pragma", "no-cache")
+                    .addHeader("Referer", "https://minecraft-voice-chat-test.web.app/room/")
                     .addHeader(
                         "Sec-Fetch-Dest",
                         "empty"
@@ -101,25 +117,15 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
                         "cross-site"
                     )
                     .addHeader(
-                        "Accept",
-                        "*/*"
+                        "User-Agent",
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36"
                     )
-                    .addHeader(
-                        "Accept-Encoding",
-                        "gzip, deflate, br"
-                    )
-                    .addHeader(
-                        "Cache-Control",
-                        "no-cache"
-                    )
-                    .addHeader("DNT", "1")
-                    .addHeader("Pragma", "no-cache")
                     .build()
 
-                Bukkit.getLogger().info("url: ${newRequest.url.toString()}")
                 val resp = it.proceed(newRequest)
                 resp
             }
+            .addNetworkInterceptor(loggingInterceptor)
             .build()
     }
 
@@ -127,7 +133,7 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
         val req = Request.Builder()
             .url("https://dispatcher.webrtc.ecl.ntt.com/signaling")
             .build()
-        OkHttpClient().newCall(req).execute().use {
+        okHttpClient.newCall(req).execute().use {
             if (!it.isSuccessful) {
                 throw IOException("Failed to get /signaling $it")
             }
