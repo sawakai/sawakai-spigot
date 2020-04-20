@@ -42,7 +42,7 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
             socket.emit("ROOM_JOIN", "{\"roomName\":\"${roomId}\",\"roomType\":\"sfu\"}")
             Bukkit.getLogger().info("connected!")
         }).on(Socket.EVENT_ERROR, Emitter.Listener {
-            Bukkit.getLogger().info("errror")
+            Bukkit.getLogger().info("error")
             Bukkit.getLogger().info(it.map { it.toString() }.toString())
         }).on(Socket.EVENT_DISCONNECT) {
             Bukkit.getLogger().info("Socket was disconnected")
