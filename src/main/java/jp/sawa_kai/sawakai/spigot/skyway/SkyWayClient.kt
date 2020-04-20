@@ -148,6 +148,6 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
     }
 
     private val signalingServerUrl by lazy {
-        "https://${signalingServerDomain}/socket.io/"
+        "https://${signalingServerDomain}"
     }
 }
