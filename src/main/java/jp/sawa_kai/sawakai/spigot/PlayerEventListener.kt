@@ -26,7 +26,7 @@ class PlayerEventListener(private val client: SkyWayClient) : Listener {
 
         val obj = JSONObject()
         obj.put("gameUserID", player.name)
-        obj.put("gameUserID", "minecraft")
+        obj.put("gameClientID", "minecraft")
         obj.put("position", JSONObject().apply {
             put("x", player.location.x)
             put("y", player.location.y)
