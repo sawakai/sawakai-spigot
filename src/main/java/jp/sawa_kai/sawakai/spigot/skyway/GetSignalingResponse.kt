@@ -1,4 +1,4 @@
-package jp.sawa_kai.sawakai.spigot.skyway.types
+package jp.sawa_kai.sawakai.spigot.skyway
 
 data class GetSignalingResponse(
     var domain: String

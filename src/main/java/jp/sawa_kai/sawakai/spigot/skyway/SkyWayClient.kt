@@ -5,7 +5,6 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
-import jp.sawa_kai.sawakai.spigot.skyway.types.GetSignalingResponse
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -18,7 +17,10 @@ import java.io.IOException
 import java.security.SecureRandom
 
 
-class SkyWayClient(private val apiKey: String, private val roomId: String) {
+class SkyWayClient(private val apiKey: String, private val origin: String, val roomId: String) {
+
+    val connected
+        get() = socket?.connected() ?: false
 
     private val okHttpClient = {
         val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
@@ -33,7 +35,7 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
             .cookieJar(CookieJar())
             .addInterceptor {
                 val newRequest = it.request().newBuilder()
-                    .addHeader("Origin", "https://minecraft-voice-chat-test.web.app")
+                    .addHeader("Origin", origin)
                     .build()
 
                 val resp = it.proceed(newRequest)
@@ -65,9 +67,10 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
         "https://${signalingServerDomain}"
     }
 
-    private val onConnectedHandler: (() -> Unit)? = null
-    private val onUserJoinedRoomHandler: (() -> Unit)? = null
-    private val onUserLeftRoomHandler: (() -> Unit)? = null
+    private var socket: Socket? = null
+
+    private var onConnectedHandler: (() -> Unit)? = null
+    private var onErrorHandler: ((messages: List<String>) -> Unit)? = null
 
     fun connect() {
         Bukkit.getLogger().info("Signaling server is $signalingServerUrl")
@@ -79,55 +82,43 @@ class SkyWayClient(private val apiKey: String, private val roomId: String) {
 
         IO.setDefaultOkHttpCallFactory(okHttpClient)
         IO.setDefaultOkHttpWebSocketFactory(okHttpClient)
-        val socket = IO.socket(signalingServerUrl, IO.Options().apply {
+        socket = IO.socket(signalingServerUrl, IO.Options().apply {
             query = "apiKey=${apiKey}&token=${token}"
             timestampRequests = true
             secure = true
             forceNew = true
         })
-        socket.on(Socket.EVENT_CONNECT, Emitter.Listener {
-            Bukkit.getLogger().info("connected!")
+        socket?.on(Socket.EVENT_CONNECT, Emitter.Listener {
             val obj = JSONObject().apply {
                 put("roomName", roomId)
                 put("roomType", "sfu")
             }
-            Bukkit.getLogger().info("RoomId ${roomId}")
-            socket.emit("ROOM_JOIN", obj)
-        }).on(Socket.EVENT_ERROR, Emitter.Listener {
-            Bukkit.getLogger().info("error")
-            Bukkit.getLogger().info(it.map { it.toString() }.toString())
-        }).on(Socket.EVENT_DISCONNECT) {
-            Bukkit.getLogger().info("Socket was disconnected")
-        }.on(Socket.EVENT_MESSAGE) {
-            Bukkit.getLogger().info("message: ${it}")
-        }.on(Socket.EVENT_PING) {
-            Bukkit.getLogger().info("ping")
-        }.on(Socket.EVENT_PONG) {
-            Bukkit.getLogger().info("pong")
-        }.on(Socket.EVENT_RECONNECTING) {
-            Bukkit.getLogger().info("reconnecting")
-        }.on(Socket.EVENT_CONNECTING) {
-            Bukkit.getLogger().info("connecting")
-        }.on("ROOM_USER_JOIN") {
-            Bukkit.getLogger().info("ROOM_USER_JOIN, ${it[0]}")
-            //socket.emit("SFU_GET_OFFER", "{\"roomName\":\"${roomId}\"}")
-            val obj = JSONObject().apply {
-                put("roomName", roomId)
-                put("data", "from minecraft")
-            }
-            socket.emit("ROOM_SEND_DATA", obj)
-        }
-        socket.connect()
+            socket?.emit("ROOM_JOIN", obj)
+            onConnectedHandler?.invoke()
+        })?.on(Socket.EVENT_ERROR, Emitter.Listener { errors ->
+            onErrorHandler?.invoke(errors.map { it.toString() })
+        })
+        socket?.connect()
 
         GlobalScope.launch {
             while (true) {
-                socket.emit("PING")
                 delay(25_000)
+                socket?.emit("PING")
             }
         }
     }
 
     fun onConnected(handler: () -> Unit): SkyWayClient {
+        onConnectedHandler = handler
         return this
+    }
+
+    fun onError(handler: (messages: List<String>) -> Unit): SkyWayClient {
+        onErrorHandler = handler
+        return this
+    }
+
+    fun send(message: JSONObject) {
+        socket?.emit("ROOM_SEND_DATA", message)
     }
 }
