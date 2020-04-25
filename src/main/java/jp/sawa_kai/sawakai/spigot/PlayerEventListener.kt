@@ -1,16 +1,12 @@
 package jp.sawa_kai.sawakai.spigot
 
 import jp.sawa_kai.sawakai.spigot.skyway.SkyWayClient
-import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.util.Vector
 import org.json.JSONObject
-import kotlin.math.acos
-import kotlin.math.cos
-import kotlin.math.sin
 
 class PlayerEventListener(private val client: SkyWayClient) : Listener {
 
@@ -28,24 +24,25 @@ class PlayerEventListener(private val client: SkyWayClient) : Listener {
         obj.put("gameUserID", player.name)
         obj.put("gameClientID", "minecraft")
         obj.put("position", JSONObject().apply {
-            put("x", player.location.x)
-            put("y", player.location.y)
-            put("z", player.location.z)
+            put("x", player.eyeLocation.x)
+            put("y", player.eyeLocation.y)
+            put("z", player.eyeLocation.z)
         })
-        obj.put("faceRotation", toQuaternion(player.eyeLocation))
+
+        val eyeDirection = player.eyeLocation.direction
+        val y = Vector(0.0, 1.0, 0.0)
+        val topDirection = Vector().copy(eyeDirection).crossProduct(y.crossProduct(eyeDirection)).normalize()
+        obj.put("faceDirection", eyeDirection.toJSONObject())
+        obj.put("upDirection", topDirection.toJSONObject())
+
         client.send(obj)
     }
 
-    private fun toQuaternion(eyeLocation: Location): JSONObject {
-        val base = Vector(1.0, 0.0, 0.0)
-        val direction = eyeLocation.direction
-        val axis = base.crossProduct(direction).normalize()
-        val theta = acos(base.dot(direction))
-        return JSONObject().apply {
-            put("x", axis.x * sin(theta / 2.0))
-            put("y", axis.y * sin(theta / 2.0))
-            put("z", axis.z * sin(theta / 2.0))
-            put("w", cos(theta / 2.0))
+    private fun Vector.toJSONObject(): JSONObject {
+        return JSONObject().also {
+            it.put("x", x)
+            it.put("y", y)
+            it.put("z", z)
         }
     }
 }

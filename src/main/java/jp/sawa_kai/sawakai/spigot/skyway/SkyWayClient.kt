@@ -142,6 +142,7 @@ class SkyWayClient(
         if (!connected || socket == null) {
             throw IllegalStateException("no connection to skyway")
         }
+
         socket.emit("ROOM_SEND_DATA", JSONObject().apply {
             put("roomName", roomId)
             put("data", message)
