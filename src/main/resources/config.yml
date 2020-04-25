@@ -1,0 +1,4 @@
+api-key: youAPIKey
+http-origin: https://example.com
+room-id: room-id
+debug: false
