@@ -89,7 +89,7 @@ class SkyWayClient(
     fun connect() {
         Bukkit.getLogger().info("Signaling server is $signalingServerUrl")
 
-        val token = SecureRandom.getInstanceStrong()
+        val token = SecureRandom.getInstance("NativePRNGNonBlocking")
             .nextLong()
             .toString(36)
             .substring(2)
