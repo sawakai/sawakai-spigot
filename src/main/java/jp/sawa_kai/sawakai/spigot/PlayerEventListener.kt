@@ -1,18 +1,26 @@
 package jp.sawa_kai.sawakai.spigot
 
 import jp.sawa_kai.sawakai.spigot.skyway.SkyWayClient
+import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.util.Vector
 import org.json.JSONObject
+import kotlin.math.max
+import kotlin.system.measureTimeMillis
 
 class PlayerEventListener(private val client: SkyWayClient) : Listener {
 
     @EventHandler
     fun onPlayerMove(event: PlayerMoveEvent) {
-        sendToSkyWay(event.player)
+        val millis = measureTimeMillis {
+            sendToSkyWay(event.player)
+        }
+        if (50 < millis) {
+            Bukkit.getLogger().warning("sendToSkyWay is too slow! $millis ms")
+        }
     }
 
     private fun sendToSkyWay(player: Player) {
